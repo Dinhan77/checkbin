@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptoScan AI · Binance + Alpha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg0: #0f1923;
+  --bg1: #162130;
+  --bg2: #1d2d3f;
+  --bg3: #243649;
+  --bg4: #2c4058;
+  --neon: #00e5a0;
+  --neon2: #00c87a;
+  --neon-dim: rgba(0,229,160,0.1);
+  --neon-border: rgba(0,229,160,0.28);
+  --amber: #f5a623;
+  --amber-dim: rgba(245,166,35,0.12);
+  --red: #ff5555;
+  --red-dim: rgba(255,85,85,0.12);
+  --blue: #5eb8ff;
+  --purple: #c49dff;
+  --text: #ddeeff;
+  --text2: #8ab4cc;
+  --text3: #5c8299;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.16);
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-body: 'Barlow', sans-serif;
+  --font-condensed: 'Barlow Condensed', sans-serif;
+  --r: 8px;
+  --r2: 12px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg0);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,229,160,0.015) 3px, rgba(0,229,160,0.015) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── HEADER ─────────────────────────────── */
+.hdr {
+  position: sticky; top: 0; z-index: 200;
+  height: 52px;
+  background: rgba(15,25,35,0.97);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+}
+.hdr-logo {
+  font-family: var(--font-condensed);
+  font-size: 20px; font-weight: 700;
+  color: var(--neon);
+  letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 8px;
+}
+.hdr-logo-icon {
+  width: 22px; height: 22px;
+  border: 1.5px solid var(--neon);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.hdr-right {
+  display: flex; align-items: center; gap: 16px;
+}
+.live-dot {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text2);
+}
+.live-dot::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--neon);
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+#hdr-clock {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+}
+
+/* ── TICKER TAPE ────────────────────────── */
+.ticker-wrap {
+  background: var(--bg0);
+  border-bottom: 1px solid var(--border2);
+  height: 32px;
+  overflow: hidden;
+  position: relative;
+}
+.ticker-wrap::before, .ticker-wrap::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0; width: 60px;
+  z-index: 2; pointer-events: none;
+}
+.ticker-wrap::before { left: 0; background: linear-gradient(to right, var(--bg0), transparent); }
+.ticker-wrap::after { right: 0; background: linear-gradient(to left, var(--bg0), transparent); }
+.ticker-inner {
+  display: flex; align-items: center; height: 100%;
+  animation: scroll-x 40s linear infinite;
+  white-space: nowrap;
+}
+@keyframes scroll-x { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.ticker-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 20px;
+  font-family: var(--font-mono); font-size: 11px;
+  border-right: 1px solid var(--border);
+}
+.ticker-sym { color: var(--text2); }
+.ticker-price { color: var(--text); font-weight: 500; }
+.ticker-chg.up { color: var(--neon2); }
+.ticker-chg.dn { color: var(--red); }
+
+/* ── LAYOUT ─────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: calc(100vh - 116px);
+}
+.tab-panel { grid-column: 2; display: none; }
+.tab-panel.active { display: block; }
+
+/* ── SIDEBAR ─────────────────────────────── */
+.sidebar {
+  background: var(--bg1);
+  border-right: 2px solid var(--border2)!important;
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  display: flex; flex-direction: column; gap: 20px;
+  position: sticky; top: 124px;
+  height: calc(100vh - 124px);
+  overflow-y: auto;
+  grid-row: 1 / 99;
+}
+.sb-section { display: flex; flex-direction: column; gap: 8px; }
+.sb-label {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* API key */
+.api-wrap { display: flex; flex-direction: column; gap: 6px; }
+.api-input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 8px 10px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--neon);
+  letter-spacing: 0.02em;
+  outline: none;
+  transition: border-color 0.15s;
+  letter-spacing: 0.04em;
+}
+.api-input:focus { border-color: var(--neon-border); }
+.api-input::placeholder { color: var(--text3); letter-spacing: 0; }
+.api-hint { font-size: 11px; color: var(--text3); }
+.api-hint a { color: var(--blue); text-decoration: none; }
+.api-hint a:hover { text-decoration: underline; }
+
+/* Mode tabs */
+.mode-tabs { display: flex; flex-direction: column; gap: 4px; }
+.mode-tab {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text2); font-family: var(--font-body); font-size: 13px;
+  cursor: pointer; text-align: left;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 8px;
+}
+.mode-tab:hover { border-color: var(--border2); color: var(--text); }
+.mode-tab.on {
+  background: rgba(0,229,160,0.14);
+  border-color: var(--neon);
+  color: var(--neon);
+  font-weight: 600;
+}
+.mode-tab .mode-icon { font-size: 14px; width: 16px; text-align: center; }
+
+/* Pair chips */
+.pair-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.pair-chip {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text2); background: transparent;
+  cursor: pointer; transition: all 0.15s;
+}
+.pair-chip:hover { border-color: var(--border2); color: var(--text); }
+.pair-chip.on {
+  border-color: var(--neon-border);
+  color: var(--neon);
+  background: var(--neon-dim);
+}
+
+/* Scan button */
+.scan-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--neon);
+  color: #000;
+  font-family: var(--font-condensed);
+  font-size: 16px; font-weight: 700;
+  letter-spacing: 0.06em;
+  border: none; border-radius: var(--r);
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  text-transform: uppercase;
+}
+.scan-btn:hover { opacity: 0.88; }
+.scan-btn:active { transform: scale(0.97); }
+.scan-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.scan-btn .spin {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(0,0,0,0.25);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+}
+.scan-btn.loading .spin { display: block; }
+.scan-btn.loading .btn-txt::before { content: 'กำลัง...'; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Status */
+.status-box {
+  padding: 8px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text2);
+  display: flex; align-items: flex-start; gap: 7px;
+  line-height: 1.5;
+}
+.s-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0; margin-top: 3px;
+}
+.s-dot.scan { background: var(--amber); animation: blink 0.8s infinite; }
+.s-dot.ok { background: var(--neon); }
+.s-dot.err { background: var(--red); }
+
+/* Progress */
+.prog-track {
+  height: 2px; background: var(--bg4); border-radius: 2px; overflow: hidden;
+}
+.prog-fill {
+  height: 100%; background: var(--neon); border-radius: 2px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 8px var(--neon);
+}
+
+/* ── HISTORY PANEL ────────────────────── */
+.history-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+.hist-item {
+  padding: 7px 10px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 6px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.hist-item:hover { border-color: var(--border2); }
+.hist-item.active { border-color: var(--neon-border); }
+.hist-time { font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+.hist-mode { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.hist-top { font-family: var(--font-mono); font-size: 10px; color: var(--neon); margin-top: 3px; }
+.hist-empty { font-size: 11px; color: var(--text3); font-style: italic; padding: 8px 0; }
+.clear-hist {
+  font-size: 11px; color: var(--text3); background: none; border: none;
+  cursor: pointer; text-align: left; padding: 0;
+}
+.clear-hist:hover { color: var(--red); }
+
+/* ── MAIN CONTENT ────────────────────── */
+.main-content { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Stats row */
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+}
+.stat-box {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 12px 14px;
+}
+.stat-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.stat-val { font-family: var(--font-condensed); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-val.neon { color: var(--neon); }
+.stat-val.amber { color: var(--amber); }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+/* Alpha chips display */
+.alpha-display {
+  background: var(--bg1);
+  border: 1px solid var(--neon-border);
+  border-radius: var(--r);
+  padding: 12px 14px;
+}
+.alpha-display-hdr {
+  font-family: var(--font-mono); font-size: 10px; color: var(--neon);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+}
+.alpha-token-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
+.a-chip {
+  font-family: var(--font-mono); font-size: 10px;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--neon-dim); color: var(--neon);
+  border: 1px solid var(--neon-border);
+}
+
+/* Results label */
+.res-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.res-label {
+  font-family: var(--font-condensed); font-size: 13px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.res-count {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--neon); background: var(--neon-dim);
+  padding: 2px 8px; border-radius: 4px;
+  border: 1px solid var(--neon-border);
+}
+
+/* Placeholder */
+.placeholder {
+  text-align: center; padding: 80px 24px;
+  border: 1px dashed rgba(0,229,160,0.2);
+  border-radius: var(--r2);
+  color: var(--text3);
+}
+.ph-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.3; }
+.ph-text { font-size: 14px; margin-bottom: 6px; }
+.ph-sub { font-size: 12px; }
+
+/* Cards grid */
+.cards-wrap { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── COIN CARD ───────────────────────── */
+.coin-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.coin-card:hover {
+  border-color: var(--border2);
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+.coin-card.rank1 { border-color: rgba(15,255,176,0.25); box-shadow: 0 0 30px rgba(15,255,176,0.04); }
+.coin-card.is-alpha { border-left: 2px solid var(--amber); }
+
+/* Card header band */
+.card-band {
+  height: 2px;
+  background: var(--border);
+}
+.card-band.rank1 { background: var(--neon); box-shadow: 0 0 12px var(--neon); }
+.card-band.rank2 { background: #888; }
+.card-band.rank3 { background: var(--amber); }
+
+.card-inner { padding: 14px 16px; }
+
+/* Top row */
+.card-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.rank-num {
+  font-family: var(--font-condensed);
+  font-size: 28px; font-weight: 700; line-height: 1;
+  color: var(--text3); width: 32px;
+}
+.rank-num.r1 { color: var(--neon); text-shadow: 0 0 20px var(--neon); }
+.rank-num.r2 { color: #888; }
+.rank-num.r3 { color: var(--amber); }
+
+.coin-id { }
+.coin-sym {
+  font-family: var(--font-condensed);
+  font-size: 20px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 6px; line-height: 1;
+}
+.alpha-tag {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 500;
+  padding: 2px 5px; border-radius: 3px;
+  background: var(--amber-dim); color: var(--amber);
+  border: 1px solid rgba(245,166,35,0.25);
+  letter-spacing: 0.04em;
+}
+.coin-full { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: var(--font-mono); }
+
+/* Mini chart */
+.mini-chart-wrap {
+  width: 100px; height: 40px; position: relative;
+}
+
+/* Price block */
+.price-blk { text-align: right; }
+.p-val {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--text);
+}
+.p-chg {
+  font-family: var(--font-mono); font-size: 11px; margin-top: 2px;
+}
+.p-chg.up { color: var(--neon2); }
+.p-chg.dn { color: var(--red); }
+
+/* Metrics */
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  margin-bottom: 10px;
+}
+.m-box {
+  background: var(--bg3); border-radius: 6px; padding: 7px 9px;
+  border: 1px solid var(--border2);
+}
+.m-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.m-val { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.m-val.green { color: var(--neon2); }
+.m-val.amber { color: var(--amber); }
+.m-val.red { color: var(--red); }
+.m-val.default { color: var(--text); }
+
+/* Score section */
+.score-section {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 10px;
+}
+.score-bars-col { display: flex; flex-direction: column; gap: 5px; }
+.s-row { display: flex; align-items: center; gap: 7px; }
+.s-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--text3); width: 40px; flex-shrink: 0; }
+.s-track { flex: 1; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; position: relative; }
+.s-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+.s-num { font-family: var(--font-mono); font-size: 10px; color: var(--text3); width: 24px; text-align: right; }
+
+.signal-col { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 8px; }
+.signal-tag {
+  font-family: var(--font-condensed); font-size: 18px; font-weight: 700;
+  padding: 6px 14px; border-radius: 6px; letter-spacing: 0.06em;
+}
+.sig-sbuy { background: rgba(15,255,176,0.1); color: var(--neon); border: 1px solid var(--neon-border); }
+.sig-buy { background: rgba(77,166,255,0.1); color: var(--blue); border: 1px solid rgba(77,166,255,0.25); }
+.sig-watch { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
+.total-score {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text2);
+  text-align: right;
+}
+.total-score span { color: var(--text); font-size: 20px; font-weight: 500; font-family: var(--font-condensed); }
+
+/* AI reasoning */
+.ai-reason {
+  background: var(--bg2);
+  border-left: 3px solid var(--neon);
+  border-radius: 0 6px 6px 0;
+  padding: 9px 12px;
+  font-size: 12px; color: var(--text2); line-height: 1.6;
+  margin-bottom: 10px;
+}
+.ai-reason strong { color: var(--text); font-weight: 500; }
+.ai-reason .alpha-note { color: var(--amber); }
+
+/* News */
+.news-sec {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.news-hdr-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.news-hdr-lbl { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+.news-signal-pill {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 2px 6px; border-radius: 4px; font-weight: 500;
+}
+.ns-bull { background: rgba(15,255,176,0.08); color: var(--neon2); border: 1px solid rgba(15,255,176,0.15); }
+.ns-bear { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,77,0.2); }
+.ns-neu { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+
+.news-impact { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
+
+.news-loading {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3); font-style: italic;
+}
+.nl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); animation: blink 0.8s infinite; flex-shrink: 0; }
+
+.news-item {
+  padding: 8px 10px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 6px; margin-bottom: 5px;
+  transition: border-color 0.15s;
+}
+.news-item:last-child { margin-bottom: 0; }
+.news-item:hover { border-color: var(--border2); }
+.n-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; line-height: 1.4; }
+.n-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 3px; }
+.n-sent { font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.n-src { font-size: 11px; color: var(--text3); }
+.n-date { font-size: 11px; color: var(--text3); }
+.n-link { font-size: 11px; color: var(--blue); text-decoration: none; }
+.n-link:hover { text-decoration: underline; }
+.n-sum { font-size: 11px; color: var(--text2); line-height: 1.5; }
+.no-news { font-size: 11px; color: var(--text3); font-style: italic; }
+
+/* Market note */
+.mkt-note {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 10px 14px;
+  font-size: 12px; color: var(--text2);
+}
+.mkt-note strong { color: var(--text); }
+
+/* Last updated */
+.last-upd { font-family: var(--font-mono); font-size: 10px; color: var(--text3); text-align: right; }
+
+/* Error */
+.err-box {
+  background: var(--red-dim); border: 1px solid rgba(255,77,77,0.25);
+  border-radius: var(--r); padding: 10px 14px;
+  font-size: 13px; color: var(--red);
+}
+
+/* Disclaimer */
+.disclaimer {
+  font-size: 11px; color: var(--text3); line-height: 1.7;
+  border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg0); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+/* ── TAB NAVIGATION ─────────────────── */
+.tab-nav {
+  display: flex; gap: 0;
+  border-bottom: 2px solid var(--border2);
+  background: var(--bg0);
+  padding: 0 20px;
+}
+.tab-nav-btn {
+  padding: 10px 18px;
+  font-family: var(--font-condensed); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text3); background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.tab-nav-btn:hover { color: var(--text2); }
+.tab-nav-btn.active { color: var(--neon); border-bottom-color: var(--neon); }
+.tab-nav-btn .tab-badge {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 1px 5px; border-radius: 3px;
+  background: var(--red-dim); color: var(--red);
+  border: 1px solid rgba(255,77,77,0.2);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── PUMP & DUMP STYLES ─────────────── */
+.pd-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.pd-scan-btn {
+  padding: 10px 18px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-condensed); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border: none; border-radius: var(--r);
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+  display: flex; align-items: center; gap: 7px;
+}
+.pd-scan-btn:hover { opacity: 0.85; }
+.pd-scan-btn:active { transform: scale(0.97); }
+.pd-scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pd-scan-btn .spin { width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;display:none; }
+.pd-scan-btn.loading .spin { display:block; }
+
+.pd-auto-wrap {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text2);
+}
+.pd-auto-wrap input[type=checkbox] { accent-color: var(--red); width: 14px; height: 14px; cursor: pointer; }
+.pd-interval-sel {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 4px 8px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text);
+  outline: none; cursor: pointer;
+}
+
+.pd-threshold {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text2);
+}
+.pd-threshold input[type=range] { accent-color: var(--red); width: 80px; }
+
+.pd-stats {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+}
+.pd-stat {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 10px 12px;
+}
+.pd-stat.danger { border-color: rgba(255,77,77,0.25); background: var(--red-dim); }
+.pd-stat.warn { border-color: rgba(245,166,35,0.2); background: var(--amber-dim); }
+.pd-stat-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.pd-stat-val { font-family: var(--font-condensed); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+.pd-stat-val.red { color: var(--red); }
+.pd-stat-val.amber { color: var(--amber); }
+.pd-stat-val.neon { color: var(--neon); }
+
+/* Alert feed */
+.alert-feed-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+.alert-feed-lbl {
+  font-family: var(--font-condensed); font-size: 13px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 8px;
+}
+.alert-count-badge {
+  font-family: var(--font-mono); font-size: 10px;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--red-dim); color: var(--red);
+  border: 1px solid rgba(255,77,77,0.25);
+}
+.clear-alerts-btn {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  background: none; border: none; cursor: pointer;
+}
+.clear-alerts-btn:hover { color: var(--red); }
+
+.alert-list { display: flex; flex-direction: column; gap: 8px; }
+
+.alert-card {
+  border-radius: var(--r2); overflow: hidden;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+.alert-card.level-critical { border-color: rgba(255,77,77,0.4); }
+.alert-card.level-high { border-color: rgba(245,166,35,0.35); }
+.alert-card.level-medium { border-color: rgba(77,166,255,0.25); }
+
+.alert-band { height: 2px; }
+.alert-band.critical { background: var(--red); box-shadow: 0 0 10px var(--red); }
+.alert-band.high { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.alert-band.medium { background: var(--blue); }
+
+.alert-inner { padding: 12px 14px; }
+.alert-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px;
+}
+.alert-sym-wrap { display: flex; align-items: center; gap: 10px; }
+.alert-type-icon {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.icon-pump { background: rgba(15,255,176,0.1); border: 1px solid var(--neon-border); }
+.icon-dump { background: var(--red-dim); border: 1px solid rgba(255,77,77,0.25); }
+.icon-sus { background: var(--amber-dim); border: 1px solid rgba(245,166,35,0.2); }
+
+.alert-sym { font-family: var(--font-condensed); font-size: 20px; font-weight: 700; color: var(--text); }
+.alert-pair { font-family: var(--font-mono); font-size: 10px; color: var(--text3); margin-top: 1px; }
+
+.alert-right { text-align: right; flex-shrink: 0; }
+.alert-level-tag {
+  font-family: var(--font-condensed); font-size: 13px; font-weight: 700;
+  padding: 4px 10px; border-radius: 5px; letter-spacing: 0.06em;
+  display: inline-block; margin-bottom: 4px;
+}
+.tag-critical { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,77,0.3); }
+.tag-high { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.25); }
+.tag-medium { background: rgba(77,166,255,0.08); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
+.alert-time { font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+
+/* Signal grid */
+.signal-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 6px;
+  margin-bottom: 10px;
+}
+.sig-box {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 7px 9px;
+}
+.sig-box.triggered { border-color: rgba(255,77,77,0.3); background: rgba(255,77,77,0.04); }
+.sig-box.warn { border-color: rgba(245,166,35,0.25); background: rgba(245,166,35,0.03); }
+.sig-box-lbl { font-family: var(--font-mono); font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+.sig-box-val { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text); }
+.sig-box-val.red { color: var(--red); }
+.sig-box-val.amber { color: var(--amber); }
+.sig-box-val.neon { color: var(--neon); }
+
+/* Risk meter */
+.risk-meter-wrap { margin-bottom: 10px; }
+.risk-meter-lbl {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;
+  display: flex; justify-content: space-between;
+}
+.risk-track {
+  height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; position: relative;
+}
+.risk-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+
+/* AI verdict */
+.ai-verdict {
+  background: var(--bg3);
+  border-left: 3px solid var(--red);
+  border-radius: 0 6px 6px 0;
+  padding: 9px 12px;
+  font-size: 12px; color: var(--text2); line-height: 1.65;
+}
+.ai-verdict strong { color: var(--text); font-weight: 500; }
+.ai-verdict .verdict-action { color: var(--red); font-weight: 500; }
+.ai-verdict .verdict-safe { color: var(--neon); font-weight: 500; }
+
+/* Scanning overlay */
+.pd-scanning-msg {
+  text-align: center; padding: 48px 24px;
+  border: 1px dashed rgba(255,77,77,0.2);
+  border-radius: var(--r2); color: var(--text3);
+}
+.pd-scanning-icon { font-size: 28px; margin-bottom: 10px; }
+
+/* PD status */
+.pd-status {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text2);
+  padding: 8px 12px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--r);
+}
+.pd-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.pd-dot.scan { background: var(--red); animation: blink 0.7s infinite; }
+.pd-dot.ok { background: var(--neon); }
+.pd-dot.auto { background: var(--amber); animation: blink 2s infinite; }
+
+.next-scan-wrap {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static; height: auto;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .pd-stats { grid-template-columns: repeat(2,1fr); }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .score-section { grid-template-columns: 1fr; }
+  .card-top { grid-template-columns: auto 1fr auto; }
+  .mini-chart-wrap { display: none; }
+  .ticker-wrap { display: none; }
+  .signal-grid { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-logo-icon">⬡</div>
+    CRYPTOSCAN<span style="color:var(--text2);font-weight:400"> AI</span>
+  </div>
+  <div class="hdr-right">
+    <div class="live-dot">LIVE DATA</div>
+    <div id="hdr-clock">—</div>
+  </div>
+</header>
+
+<!-- TICKER TAPE -->
+<div class="ticker-wrap">
+  <div class="ticker-inner" id="tickerInner">
+    <div class="ticker-item"><span class="ticker-sym">BTC</span><span class="ticker-price" id="t-btc">—</span><span class="ticker-chg" id="tc-btc">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ETH</span><span class="ticker-price" id="t-eth">—</span><span class="ticker-chg" id="tc-eth">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">BNB</span><span class="ticker-price" id="t-bnb">—</span><span class="ticker-chg" id="tc-bnb">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">SOL</span><span class="ticker-price" id="t-sol">—</span><span class="ticker-chg" id="tc-sol">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">XRP</span><span class="ticker-price" id="t-xrp">—</span><span class="ticker-chg" id="tc-xrp">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">DOGE</span><span class="ticker-price" id="t-doge">—</span><span class="ticker-chg" id="tc-doge">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ADA</span><span class="ticker-price" id="t-ada">—</span><span class="ticker-chg" id="tc-ada">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">AVAX</span><span class="ticker-price" id="t-avax">—</span><span class="ticker-chg" id="tc-avax">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">DOT</span><span class="ticker-price" id="t-dot">—</span><span class="ticker-chg" id="tc-dot">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">LINK</span><span class="ticker-price" id="t-link">—</span><span class="ticker-chg" id="tc-link">—</span></div>
+    <!-- Duplicate for seamless loop -->
+    <div class="ticker-item"><span class="ticker-sym">BTC</span><span class="ticker-price" id="t-btc2">—</span><span class="ticker-chg" id="tc-btc2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ETH</span><span class="ticker-price" id="t-eth2">—</span><span class="ticker-chg" id="tc-eth2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">BNB</span><span class="ticker-price" id="t-bnb2">—</span><span class="ticker-chg" id="tc-bnb2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">SOL</span><span class="ticker-price" id="t-sol2">—</span><span class="ticker-chg" id="tc-sol2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">XRP</span><span class="ticker-price" id="t-xrp2">—</span><span class="ticker-chg" id="tc-xrp2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">DOGE</span><span class="ticker-price" id="t-doge2">—</span><span class="ticker-chg" id="tc-doge2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">ADA</span><span class="ticker-price" id="t-ada2">—</span><span class="ticker-chg" id="tc-ada2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">AVAX</span><span class="ticker-price" id="t-avax2">—</span><span class="ticker-chg" id="tc-avax2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">DOT</span><span class="ticker-price" id="t-dot2">—</span><span class="ticker-chg" id="tc-dot2">—</span></div>
+    <div class="ticker-item"><span class="ticker-sym">LINK</span><span class="ticker-price" id="t-link2">—</span><span class="ticker-chg" id="tc-link2">—</span></div>
+  </div>
+</div>
+
+<!-- TAB NAV -->
+<div class="tab-nav">
+  <button class="tab-nav-btn active" onclick="switchTab('scanner')">◈ Scanner</button>
+  <button class="tab-nav-btn" onclick="switchTab('pumpdetect')" id="pdTabBtn">⚠ Pump &amp; Dump <span class="tab-badge" id="pdAlertBadge" style="display:none">0</span></button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="sb-section">
+      <div class="sb-label">Anthropic API Key</div>
+      <div class="api-wrap">
+        <input class="api-input" type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+        <div class="api-hint">Lấy miễn phí tại <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a></div>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Chế độ quét</div>
+      <div class="mode-tabs">
+        <button class="mode-tab on" onclick="setMode(this,'spot')"><span class="mode-icon">◈</span> Spot thường</button>
+        <button class="mode-tab" onclick="setMode(this,'alpha')"><span class="mode-icon">⬡</span> Alpha only</button>
+        <button class="mode-tab" onclick="setMode(this,'both')"><span class="mode-icon">◉</span> Spot + Alpha</button>
+      </div>
+    </div>
+
+    <div class="sb-section" id="pairSection">
+      <div class="sb-label">Cặp giao dịch</div>
+      <div class="pair-chips">
+        <button class="pair-chip on" onclick="setPair(this,'USDT')">USDT</button>
+        <button class="pair-chip" onclick="setPair(this,'BTC')">BTC</button>
+        <button class="pair-chip" onclick="setPair(this,'BNB')">BNB</button>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <button class="scan-btn" id="scanBtn" onclick="startScan()">
+        <div class="spin"></div>
+        <span class="btn-txt">▶ QUÉT & PHÂN TÍCH</span>
+      </button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Trạng thái</div>
+      <div class="status-box">
+        <div class="s-dot" id="sDot"></div>
+        <span id="sTxt">Nhập API key → Quét</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label" style="display:flex;justify-content:space-between;align-items:center">
+        Lịch sử quét
+        <button class="clear-hist" onclick="clearHistory()">Xóa</button>
+      </div>
+      <div class="history-list" id="histList">
+        <div class="hist-empty">Chưa có lịch sử</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <div id="tab-scanner" class="tab-panel active" style="width:100%">
+  <main class="main-content">
+
+    <!-- Stats row -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-box">
+        <div class="stat-lbl">Token quét</div>
+        <div class="stat-val" id="st-scanned">—</div>
+        <div class="stat-sub">cặp giao dịch</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Alpha tìm thấy</div>
+        <div class="stat-val amber" id="st-alpha">—</div>
+        <div class="stat-sub">đang trade</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Thị trường</div>
+        <div class="stat-val neon" id="st-sentiment">—</div>
+        <div class="stat-sub" id="st-time">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl">Lần quét</div>
+        <div class="stat-val" id="st-count">0</div>
+        <div class="stat-sub">phiên này</div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="errArea"></div>
+
+    <!-- Alpha display -->
+    <div id="alphaArea"></div>
+
+    <!-- Results -->
+    <div class="res-hdr" id="resHdr" style="display:none">
+      <div class="res-label">Top 5 tiềm năng tăng giá · 7–15 ngày</div>
+      <div class="res-count" id="resCount">0 token</div>
+    </div>
+
+    <div id="cardsWrap">
+      <div class="placeholder">
+        <div class="ph-icon">⬡</div>
+        <div class="ph-text">Chưa có dữ liệu phân tích</div>
+        <div class="ph-sub">Nhập Anthropic API key → chọn chế độ → bấm Quét & Phân tích</div>
+      </div>
+    </div>
+
+    <div class="last-upd" id="lastUpd"></div>
+
+    <div class="disclaimer">
+      ⚠ Chỉ mang tính tham khảo, không phải lời khuyên đầu tư. Thị trường crypto có rủi ro rất cao. Luôn tự nghiên cứu thêm (DYOR) trước khi ra bất kỳ quyết định nào. Dữ liệu từ Binance Public API + Claude AI.
+    </div>
+
+  </main>
+  </div>
+
+  <!-- PUMP & DUMP TAB -->
+  <div id="tab-pumpdetect" class="tab-panel" style="width:100%">
+  <main class="main-content" id="pdMain">
+
+    <!-- PD Controls -->
+    <div class="pd-controls">
+      <button class="pd-scan-btn" id="pdScanBtn" onclick="startPDScan()">
+        <div class="spin"></div>
+        <span>⚠ PHÁT HIỆN PUMP &amp; DUMP</span>
+      </button>
+      <div class="pd-auto-wrap">
+        <input type="checkbox" id="pdAutoCheck" onchange="toggleAutoScan()">
+        <label for="pdAutoCheck">Tự động</label>
+        <select class="pd-interval-sel" id="pdInterval">
+          <option value="60">1 phút</option>
+          <option value="180">3 phút</option>
+          <option value="300" selected>5 phút</option>
+          <option value="600">10 phút</option>
+        </select>
+      </div>
+      <div class="pd-threshold">
+        <span>Ngưỡng Vol:</span>
+        <input type="range" id="volThresh" min="200" max="1000" value="400" step="50" oninput="document.getElementById('volThreshVal').textContent=this.value+'%'">
+        <span id="volThreshVal">400%</span>
+      </div>
+      <div class="next-scan-wrap" id="nextScanWrap" style="display:none">
+        <span>Quét tiếp:</span><span id="nextScanCountdown">—</span>
+      </div>
+    </div>
+
+    <!-- PD Status -->
+    <div class="pd-status">
+      <div class="pd-dot" id="pdDot"></div>
+      <span id="pdTxt">Nhấn nút để bắt đầu phát hiện bất thường</span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="pdProgFill" style="width:0%"></div></div>
+
+    <!-- PD Stats -->
+    <div class="pd-stats">
+      <div class="pd-stat">
+        <div class="pd-stat-lbl">Token quét</div>
+        <div class="pd-stat-val" id="pd-scanned">—</div>
+      </div>
+      <div class="pd-stat danger">
+        <div class="pd-stat-lbl">Cảnh báo CRITICAL</div>
+        <div class="pd-stat-val red" id="pd-critical">0</div>
+      </div>
+      <div class="pd-stat warn">
+        <div class="pd-stat-lbl">Cảnh báo HIGH</div>
+        <div class="pd-stat-val amber" id="pd-high">0</div>
+      </div>
+      <div class="pd-stat">
+        <div class="pd-stat-lbl">Lần quét hôm nay</div>
+        <div class="pd-stat-val neon" id="pd-scancount">0</div>
+      </div>
+    </div>
+
+    <!-- PD Alerts feed -->
+    <div class="alert-feed-hdr">
+      <div class="alert-feed-lbl">Cảnh báo realtime <span class="alert-count-badge" id="alertCountBadge">0</span></div>
+      <button class="clear-alerts-btn" onclick="clearAlerts()">Xóa tất cả</button>
+    </div>
+    <div class="alert-list" id="alertList">
+      <div class="pd-scanning-msg">
+        <div class="pd-scanning-icon">⚠</div>
+        <div>Chưa có cảnh báo</div>
+        <div style="font-size:11px;margin-top:6px">Nhấn quét để bắt đầu giám sát bất thường</div>
+      </div>
+    </div>
+
+    <div class="disclaimer" style="margin-top:16px">
+      ⚠ Pump &amp; Dump Detector phân tích dấu hiệu bất thường kỹ thuật (volume spike, price divergence, momentum). Không đảm bảo chính xác 100%. Luôn DYOR trước khi quyết định.
+    </div>
+
+  </main>
+  </div>
+
+</div>
+
+<script>
+// ── CONSTANTS ─────────────────────────
+const ALPHA_TOKENS = [
+  'LAYER','SIGN','AUCTION','MOCA','ORCA','PARTI','INIT','KITE','SOLV','B3',
+  'ACX','CGPT','COOKIE','DEGEN','DRIFT','ETHFI','FORM','GALA','GMX','HYPE',
+  'JELLYJELLY','KAITO','KMNO','LAUNCHCOIN','LISTA','MANTA','MOVE','NEIRO',
+  'NXPC','PENGU','PNUT','POPCAT','PROMPT','PYTH','REZ','SAFE','SKYAI',
+  'SLERF','SNSY','STG','USUAL','VINE','WIF','ZETA','ZKJ','ARKM','BANANA',
+  'BLUR','CFX','CYBER','DYDX','ENA','GFI','GRAIL','HFT','HMSTR','HOOK',
+  'ID','IQ','JTO','LQTY','MEME','MYRIA','NFP','NTRN','OMNI','ONG',
+  'PEOPLE','PORTAL','RDNT','RSS3','SHRAP','SOL','STRK','SUSHI','TNSR',
+  'TURBO','VELO','VERSE','VRTX','WAXP','WEMIX','WLD','XAI','YGG','ZEND','ZRO'
+];
+const STABLES = ['USDT','USDC','BUSD','DAI','TUSD','FDUSD','USDP','SUSD','GUSD','EUR','GBP','BRL','TRY','AUD'];
+const TICKER_SYMS = ['BTC','ETH','BNB','SOL','XRP','DOGE','ADA','AVAX','DOT','LINK'];
+
+let scanMode = 'spot', pairFilter = 'USDT', isScanning = false, scanCount = 0;
+const miniCharts = {};
+
+// ── CLOCK ─────────────────────────────
+function updateClock() {
+  document.getElementById('hdr-clock').textContent =
+    new Date().toLocaleString('vi-VN', {hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit'});
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ── TICKER ────────────────────────────
+async function loadTicker() {
+  try {
+    const syms = TICKER_SYMS.map(s => `"${s}USDT"`).join(',');
+    const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=[${syms}]`);
+    const data = await r.json();
+    data.forEach(t => {
+      const sym = t.symbol.replace('USDT','').toLowerCase();
+      const p = parseFloat(t.lastPrice);
+      const c = parseFloat(t.priceChangePercent);
+      const pStr = p >= 1000 ? p.toLocaleString('en-US',{maximumFractionDigits:1}) : p >= 1 ? p.toFixed(2) : p.toFixed(4);
+      const cStr = (c>=0?'+':'')+c.toFixed(2)+'%';
+      const cls = c >= 0 ? 'up' : 'dn';
+      ['',2].forEach(suffix => {
+        const pe = document.getElementById(`t-${sym}${suffix}`);
+        const ce = document.getElementById(`tc-${sym}${suffix}`);
+        if (pe) pe.textContent = '$'+pStr;
+        if (ce) { ce.textContent = cStr; ce.className = 'ticker-chg '+cls; }
+      });
+    });
+  } catch(e) {}
+}
+loadTicker(); setInterval(loadTicker, 30000);
+
+// ── UI CONTROLS ───────────────────────
+function setMode(el, val) {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on'); scanMode = val;
+  document.getElementById('pairSection').style.display = val === 'alpha' ? 'none' : '';
+}
+function setPair(el, val) {
+  document.querySelectorAll('.pair-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on'); pairFilter = val;
+}
+function setStatus(state, txt) {
+  document.getElementById('sDot').className = 's-dot ' + state;
+  document.getElementById('sTxt').textContent = txt;
+}
+function setProgress(p) { document.getElementById('progFill').style.width = p + '%'; }
+
+// ── MATH ──────────────────────────────
+function calcRSI(c, p=14) {
+  if (c.length < p+1) return null;
+  let g=0, l=0;
+  for (let i=c.length-p; i<c.length; i++) { const d=c[i]-c[i-1]; if(d>0) g+=d; else l-=d; }
+  if (l===0) return 100;
+  return 100-(100/(1+(g/p)/(l/p)));
+}
+function calcEMA(c, p) {
+  if (c.length < p) return c[c.length-1];
+  const k=2/(p+1); let e=c.slice(0,p).reduce((a,b)=>a+b,0)/p;
+  for (let i=p; i<c.length; i++) e=c[i]*k+e*(1-k); return e;
+}
+function fmtP(p) {
+  if (!p) return '—';
+  if (p>=1000) return '$'+p.toLocaleString('en-US',{maximumFractionDigits:1});
+  if (p>=1) return '$'+p.toFixed(4);
+  if (p>=0.01) return '$'+p.toFixed(5);
+  return '$'+p.toFixed(8);
+}
+
+// ── MINI CHART ────────────────────────
+function drawMiniChart(canvasId, closes, isUp) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || closes.length < 2) return;
+  if (miniCharts[canvasId]) { miniCharts[canvasId].destroy(); }
+  const color = isUp ? '#0fffb0' : '#ff4d4d';
+  miniCharts[canvasId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: closes.map((_,i)=>i),
+      datasets: [{
+        data: closes,
+        borderColor: color,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: false,
+      animation: false,
+      plugins: { legend: {display:false}, tooltip: {enabled:false} },
+      scales: { x:{display:false}, y:{display:false} },
+      elements: { line: { borderCapStyle: 'round' } }
+    }
+  });
+}
+
+// ── HISTORY ───────────────────────────
+function loadHistory() { return JSON.parse(localStorage.getItem('cs_history') || '[]'); }
+function saveHistory(h) { localStorage.setItem('cs_history', JSON.stringify(h.slice(0,10))); }
+function clearHistory() { localStorage.removeItem('cs_history'); renderHistory(); }
+function addHistory(entry) {
+  const h = loadHistory();
+  h.unshift(entry);
+  saveHistory(h);
+  renderHistory();
+}
+function renderHistory() {
+  const h = loadHistory();
+  const el = document.getElementById('histList');
+  if (!h.length) { el.innerHTML = '<div class="hist-empty">Chưa có lịch sử</div>'; return; }
+  el.innerHTML = h.map((item, i) => `
+    <div class="hist-item ${i===0?'active':''}" onclick="loadHistoryEntry(${i})">
+      <div class="hist-time">${item.time}</div>
+      <div class="hist-mode">${item.mode} · ${item.pair}</div>
+      <div class="hist-top">${(item.top5||[]).map(c=>c.replace(/USDT$|BTC$|BNB$/,'')).join(' · ')}</div>
+    </div>`).join('');
+}
+function loadHistoryEntry(i) {
+  const h = loadHistory();
+  const entry = h[i];
+  if (!entry || !entry.analysis) return;
+  document.querySelectorAll('.hist-item').forEach((el,j)=>el.classList.toggle('active',j===i));
+  document.getElementById('resHdr').style.display = 'flex';
+  document.getElementById('resCount').textContent = '5 token';
+  renderCards(entry.analysis, entry.tickerSnap, null);
+  document.getElementById('lastUpd').textContent = 'Dữ liệu từ: ' + entry.time;
+}
+renderHistory();
+
+// ── CLAUDE API ────────────────────────
+async function callClaude(key, messages, useSearch) {
+  const body = { model:'claude-sonnet-4-20250514', max_tokens:2500, messages };
+  if (useSearch) body.tools = [{type:'web_search_20250305',name:'web_search'}];
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const errBody = await r.json().catch(()=>({}));
+    const msg = errBody.error?.message || errBody.message || JSON.stringify(errBody);
+    throw new Error(`API HTTP ${r.status}: ${msg}`);
+  }
+  const d = await r.json();
+  // Collect all text blocks - when Claude returns mixed content (text + tool_use),
+  // we join only text parts. If stop_reason is tool_use, we need the last text block.
+  const textParts = d.content
+    .filter(c => c.type === 'text' && c.text && c.text.trim())
+    .map(c => c.text.trim());
+  if (textParts.length === 0) throw new Error('Claude trả về không có text content');
+  // Return the part most likely to contain JSON (longest, or contains '{')
+  const withJson = textParts.filter(t => t.includes('{'));
+  return withJson.length > 0 ? withJson[withJson.length - 1] : textParts[textParts.length - 1];
+}
+
+// ── MAIN SCAN ─────────────────────────
+// ── ROBUST JSON PARSER ───────────────
+function robustParseJSON(raw) {
+  if (!raw || typeof raw !== 'string') throw new Error('Claude trả về rỗng');
+  let s = raw.trim();
+  // Remove markdown fences
+  s = s.replace(/^```(?:json)?[\s\r\n]*/i, '').replace(/[\s\r\n]*```\s*$/i, '').trim();
+  // Try direct parse
+  try { return JSON.parse(s); } catch(e0) {}
+  // Find first { and last matching } using brace counting
+  const start = s.indexOf('{');
+  if (start === -1) throw new Error('Không tìm thấy JSON trong response: ' + s.slice(0,80));
+  let depth = 0, end = -1;
+  for (let i = start; i < s.length; i++) {
+    if (s[i] === '{') depth++;
+    else if (s[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  const jsonStr = end !== -1 ? s.slice(start, end + 1) : s.slice(start);
+  // Try parse as-is
+  try { return JSON.parse(jsonStr); } catch(e1) {}
+  // Fix trailing commas: ,] and ,}
+  try { return JSON.parse(jsonStr.replace(/,\s*([\]\}])/g, '$1')); } catch(e2) {}
+  // If truncated, try to close open braces
+  if (end === -1) {
+    const opens = (jsonStr.match(/\{/g)||[]).length;
+    const closes = (jsonStr.match(/\}/g)||[]).length;
+    const repaired = jsonStr.replace(/,?\s*$/, '') + '}'.repeat(Math.max(0, opens - closes));
+    try { return JSON.parse(repaired); } catch(e3) {}
+  }
+  throw new Error('Không thể parse JSON. Response: ' + s.slice(0, 120));
+}
+
+async function startScan() {
+  if (isScanning) return;
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { document.getElementById('errArea').innerHTML='<div class="err-box">⚠ Vui lòng nhập Anthropic API key trước.</div>'; return; }
+
+  isScanning = true;
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true; btn.classList.add('loading');
+  document.getElementById('errArea').innerHTML = '';
+  document.getElementById('alphaArea').innerHTML = '';
+  document.getElementById('resHdr').style.display = 'none';
+  document.getElementById('cardsWrap').innerHTML = '<div class="placeholder"><div class="ph-icon" style="animation:blink 1s infinite">⬡</div><div class="ph-text">Đang khởi động...</div></div>';
+  document.getElementById('lastUpd').textContent = '';
+
+  const suffix = scanMode === 'alpha' ? 'USDT' : pairFilter;
+
+  try {
+    // Step 1: Binance
+    setStatus('scan','Bước 1/5 — Lấy dữ liệu Binance...');
+    setProgress(8);
+
+    const tResp = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    if (!tResp.ok) throw new Error('Không kết nối Binance API');
+    const allT = await tResp.json();
+    const tMap = {}; allT.forEach(t => { tMap[t.symbol]=t; });
+
+    // Step 2: Build pool
+    setStatus('scan','Bước 2/5 — Lọc và phân loại token...');
+    setProgress(20);
+
+    let pool = [];
+    const sfxList = scanMode==='alpha' ? ['USDT','BTC','BNB'] : [suffix];
+
+    if (scanMode==='alpha'||scanMode==='both') {
+      ALPHA_TOKENS.forEach(base => {
+        sfxList.forEach(sfx => {
+          const sym=base+sfx;
+          if (tMap[sym]&&parseFloat(tMap[sym].quoteVolume)>10000)
+            pool.push({...tMap[sym],isAlpha:true});
+        });
+      });
+    }
+    if (scanMode==='spot'||scanMode==='both') {
+      allT.filter(t => {
+        if (!t.symbol.endsWith(suffix)) return false;
+        const base=t.symbol.slice(0,-suffix.length);
+        if (STABLES.includes(base)) return false;
+        if (parseFloat(t.quoteVolume)<500000) return false;
+        if (scanMode==='both'&&ALPHA_TOKENS.includes(base)) return false;
+        return true;
+      }).sort((a,b)=>parseFloat(b.quoteVolume)-parseFloat(a.quoteVolume))
+        .slice(0,60).forEach(t=>pool.push({...t,isAlpha:false}));
+    }
+    if (!pool.length) throw new Error('Không tìm thấy token phù hợp');
+    pool.sort((a,b)=>{
+      if(a.isAlpha&&!b.isAlpha) return -1;
+      if(!a.isAlpha&&b.isAlpha) return 1;
+      return parseFloat(b.quoteVolume)-parseFloat(a.quoteVolume);
+    });
+
+    const alphaFound = [...new Set(pool.filter(t=>t.isAlpha).map(t=>t.symbol.replace(/USDT$|BTC$|BNB$/,'')))];
+
+    // Update stats
+    document.getElementById('st-scanned').textContent = pool.length;
+    document.getElementById('st-alpha').textContent = alphaFound.length || '—';
+
+    // Show alpha chips
+    if (alphaFound.length) {
+      document.getElementById('alphaArea').innerHTML = `
+        <div class="alpha-display">
+          <div class="alpha-display-hdr">⬡ Binance Alpha đang trade · ${alphaFound.length} token</div>
+          <div class="alpha-token-wrap">${alphaFound.map(b=>`<span class="a-chip">${b}</span>`).join('')}</div>
+        </div>`;
+    }
+
+    // Step 3: Klines + TA
+    setStatus('scan','Bước 3/5 — Tính RSI, MACD, EMA...');
+    setProgress(35);
+
+    const top20 = pool.slice(0,20);
+    const klineData = await Promise.all(
+      top20.slice(0,12).map(t =>
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${t.symbol}&interval=1d&limit=30`)
+          .then(r=>r.ok?r.json():[]).then(k=>({symbol:t.symbol,klines:k})).catch(()=>({symbol:t.symbol,klines:[]}))
+      )
+    );
+    const kMap={}; klineData.forEach(k=>{kMap[k.symbol]=k.klines;});
+
+    const summaries = top20.map(t => {
+      const klines=kMap[t.symbol]||[];
+      let rsi=null,trend='neutral',macdSig='neutral',closes=[];
+      if (klines.length>=14) {
+        closes=klines.map(k=>parseFloat(k[4]));
+        rsi=calcRSI(closes,14);
+        const s7=closes.slice(-7).reduce((a,b)=>a+b,0)/7;
+        const s21=closes.length>=21?closes.slice(-21).reduce((a,b)=>a+b,0)/21:null;
+        if(s21) trend=s7>s21?'uptrend':'downtrend';
+        macdSig=(calcEMA(closes,12)-calcEMA(closes,26))>0?'bullish':'bearish';
+      }
+      const ch7=klines.length>=7?((parseFloat(klines[klines.length-1][4])-parseFloat(klines[klines.length-7][4]))/parseFloat(klines[klines.length-7][4])*100).toFixed(1):null;
+      return {symbol:t.symbol,isAlpha:t.isAlpha||false,price:parseFloat(t.lastPrice),change24h:parseFloat(t.priceChangePercent).toFixed(2),volumeM:Math.round(parseFloat(t.quoteVolume)/1e6),rsi:rsi?Math.round(rsi):null,trend,macdSig,ch7,closes:closes.slice(-14)};
+    });
+
+    // Step 4: Claude select
+    setStatus('scan','Bước 4/5 — Claude AI phân tích chọn Top 5...');
+    setProgress(52);
+
+    const alphaSyms=summaries.filter(s=>s.isAlpha).map(s=>s.symbol);
+    const modeNote=scanMode==='alpha'?'Chỉ phân tích Binance Alpha tokens.':scanMode==='both'?`Kết hợp Alpha (${alphaSyms.length} token) và Spot. Alpha tokens có bonus điểm.`:'Phân tích Spot theo volume và kỹ thuật.';
+
+    // Build compact data string for Claude (reduces tokens)
+    const compact = summaries.slice(0,15).map(s =>
+      s.symbol+'|a:'+(s.isAlpha?1:0)+'|c:'+s.change24h+'%|v:'+s.volumeM+'M|rsi:'+(s.rsi||'?')+'|'+s.trend+'|'+s.macdSig+'|7d:'+(s.ch7||'?')+'%'
+    ).join('\n');
+
+    const promptText = 'TASK: Analyze these Binance tokens and pick TOP 5 with highest potential to rise in 7-15 days.\n\n'
+      + 'TOKEN DATA (symbol|alpha|24hChange|volumeM|RSI|trend|MACD|7dChange):\n'
+      + compact + '\n\n'
+      + 'Alpha tokens bonus +5-15pts: ' + (alphaSyms.join(',') || 'none') + '\n'
+      + 'Mode: ' + modeNote + '\n\n'
+      + 'Return ONLY valid JSON starting with { and ending with }, no other text:\n'
+      + '{"top5":[{"symbol":"SOLUSDT","rank":1,"isAlpha":false,"taScore":72,"volScore":78,"faScore":65,"listingScore":30,"totalScore":74,"targetReturn":"+8-15%","timeframe":"7-12 ngay","signal":"BUY","keyReason":"RSI hoi phuc, MACD bullish","alphaNote":"","risk":"Trung binh","entryZone":"Gia hien tai","stopLoss":"-5%"}],"marketSentiment":"Tich cuc","analysisNote":"Nhan dinh ngan"}';
+
+    const selRaw = await callClaude(apiKey, [{role:'user', content: promptText}], false);
+
+    let analysis;
+    try {
+      analysis = robustParseJSON(selRaw);
+      if (!analysis || !analysis.top5 || !Array.isArray(analysis.top5) || analysis.top5.length === 0) {
+        throw new Error('top5 array missing or empty');
+      }
+    } catch(e) {
+      const rawPreview = selRaw ? selRaw.slice(0,300).replace(/\n/g,' ') : '[empty - Claude trả về rỗng]';
+      throw new Error(`Parse lỗi: ${e.message} | Claude raw response: ${rawPreview}`);
+    }
+
+    // Build ticker snapshot for history
+    const tickerSnap={};
+    (analysis.top5||[]).forEach(c=>{ if(tMap[c.symbol]) tickerSnap[c.symbol]=tMap[c.symbol]; });
+
+    // Store closes per symbol for charts
+    const closesMap={};
+    summaries.forEach(s=>{ closesMap[s.symbol]=s.closes; });
+
+    // Render cards (no news yet)
+    document.getElementById('resHdr').style.display='flex';
+    document.getElementById('resCount').textContent=(analysis.top5||[]).length+' token';
+    renderCards(analysis,tMap,null,closesMap);
+
+    document.getElementById('st-sentiment').textContent=analysis.marketSentiment||'—';
+    document.getElementById('st-time').textContent=new Date().toLocaleTimeString('vi-VN');
+    scanCount++;
+    document.getElementById('st-count').textContent=scanCount;
+
+    // Step 5: News
+    setStatus('scan','Bước 5/5 — Tìm tin tức mới nhất...');
+    setProgress(68);
+
+    const newsMap={};
+    for (const coin of (analysis.top5||[])) {
+      const base=coin.symbol.replace(/USDT$|BTC$|BNB$/,'');
+      updateNewsLoading(coin.symbol);
+      try {
+        const raw=await callClaude(apiKey,[{role:'user',content:`Search for latest news about ${base} cryptocurrency in the last 7 days.\n\nReturn ONLY raw JSON (no markdown, no backticks, no explanation):\n{"news":[{"title":"Tiêu đề tin tức","source":"Tên nguồn","date":"Ngày","sentiment":"bullish","summary":"Tóm tắt 1-2 câu tiếng Việt","url":"https://..."}],"overallNewsSignal":"bullish","newsImpact":"Tóm tắt tác động ngắn bằng tiếng Việt"}`}],true);
+        let nd;
+        try {
+          let nStr = raw;
+          const nMd = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (nMd) nStr = nMd[1].trim();
+          else {
+            const ns = raw.indexOf('{');
+            if (ns !== -1) {
+              let nd2 = 0, ne = -1;
+              for (let i = ns; i < raw.length; i++) {
+                if (raw[i]==='{') nd2++; else if (raw[i]==='}'){nd2--;if(nd2===0){ne=i;break;}}
+              }
+              if (ne !== -1) nStr = raw.slice(ns, ne+1);
+            }
+          }
+          nd = JSON.parse(nStr);
+          if (!nd.news) nd = {news:[],overallNewsSignal:'neutral',newsImpact:'Không có tin tức'};
+        } catch(e) { nd={news:[],overallNewsSignal:'neutral',newsImpact:'Không parse được tin tức'}; }
+        newsMap[coin.symbol]=nd;
+      } catch(e) { newsMap[coin.symbol]={news:[],overallNewsSignal:'neutral',newsImpact:'Lỗi tải tin tức'}; }
+      updateNewsDone(coin.symbol,newsMap[coin.symbol]);
+      setProgress(68+Math.round(Object.keys(newsMap).length/(analysis.top5.length)*28));
+    }
+
+    // Final render with news
+    renderCards(analysis,tMap,newsMap,closesMap);
+
+    // Save to history
+    addHistory({
+      time: new Date().toLocaleString('vi-VN'),
+      mode: scanMode, pair: pairFilter,
+      top5: (analysis.top5||[]).map(c=>c.symbol),
+      analysis, tickerSnap
+    });
+
+    setStatus('ok',`Xong · ${pool.length} token · Thị trường: ${analysis.marketSentiment||'—'}`);
+    setProgress(100);
+    document.getElementById('lastUpd').textContent='Cập nhật: '+new Date().toLocaleString('vi-VN');
+
+  } catch(err) {
+    setStatus('err','Lỗi: '+err.message);
+    const errDetail = err.message || 'Unknown error';
+    document.getElementById('errArea').innerHTML=`<div class="err-box" style="font-size:11px;line-height:1.7">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">⚠ Có lỗi xảy ra</div>
+      <div>${errDetail}</div>
+      <div style="margin-top:8px;color:rgba(255,85,85,0.7)">Kiểm tra: 1) API key hợp lệ chưa? 2) Tài khoản Anthropic còn credit không? 3) Kết nối mạng ổn không?</div>
+    </div>`;
+    document.getElementById('cardsWrap').innerHTML='<div class="placeholder"><div class="ph-icon">✕</div><div class="ph-text">Có lỗi xảy ra</div><div class="ph-sub">Kiểm tra API key và thử lại</div></div>';
+  }
+  btn.disabled=false; btn.classList.remove('loading'); isScanning=false;
+}
+
+// ── RENDER CARDS ──────────────────────
+function renderCards(analysis, tMap, newsMap, closesMap) {
+  const wrap=document.getElementById('cardsWrap');
+  if (!analysis.top5||!analysis.top5.length) { wrap.innerHTML='<div class="placeholder"><div class="ph-icon">◌</div><div class="ph-text">Không có kết quả</div></div>'; return; }
+
+  const sigCls=(s)=>s&&s.toLowerCase().includes('strong')?'sig-sbuy':s&&s.toLowerCase().includes('buy')?'sig-buy':'sig-watch';
+  const riskCol=(r)=>r&&r.toLowerCase().includes('cao')?'red':r&&r.toLowerCase().includes('thấp')?'green':'amber';
+  const sentCls={bullish:'ns-bull',bearish:'ns-bear',neutral:'ns-neu'};
+  const sentLbl={bullish:'TĂNG',bearish:'GIẢM',neutral:'TRUNG LẬP'};
+  const nSentCls={bullish:'ns-bull',bearish:'ns-bear',neutral:'ns-neu'};
+
+  let html = analysis.top5.map((coin,i)=>{
+    const t=tMap[coin.symbol]||{};
+    const price=parseFloat(t.lastPrice||0);
+    const change=parseFloat(t.priceChangePercent||0);
+    const cStr=(change>=0?'+':'')+change.toFixed(2)+'%';
+    const isUp=change>=0;
+    const base=coin.symbol.replace(/USDT$|BTC$|BNB$/,'');
+    const listScore=coin.listingScore||(coin.isAlpha?72:30);
+    const newsScore=newsMap&&newsMap[coin.symbol]?{bullish:75,bearish:28,neutral:50}[newsMap[coin.symbol].overallNewsSignal]||50:50;
+    const rkCls=['r1','r2','r3','',''][i]||'';
+    const bandCls=['rank1','rank2','rank3','',''][i]||'';
+    const cardCls=['coin-card',i===0?'rank1':'',coin.isAlpha?'is-alpha':''].filter(Boolean).join(' ');
+    const closes=closesMap&&closesMap[coin.symbol]?closesMap[coin.symbol]:[];
+
+    let newsHtml='';
+    if (!newsMap) newsHtml=`<div class="news-loading" id="nl-${coin.symbol}"><div class="nl-dot"></div>Đang tìm tin tức...</div>`;
+    else newsHtml=renderNewsHTML(newsMap[coin.symbol]);
+
+    return `<div class="${cardCls}">
+      <div class="card-band ${bandCls}"></div>
+      <div class="card-inner">
+        <div class="card-top">
+          <div class="rank-num ${rkCls}">${coin.rank}</div>
+          <div class="coin-id">
+            <div class="coin-sym">${base}${coin.isAlpha?`<span class="alpha-tag">ALPHA</span>`:''}</div>
+            <div class="coin-full">${coin.symbol}</div>
+          </div>
+          <div class="mini-chart-wrap">
+            <canvas id="chart-${coin.symbol}" width="100" height="40"></canvas>
+          </div>
+          <div class="price-blk">
+            <div class="p-val">${fmtP(price)}</div>
+            <div class="p-chg ${isUp?'up':'dn'}">${cStr} 24h</div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="m-box"><div class="m-lbl">Target</div><div class="m-val green">${coin.targetReturn}</div></div>
+          <div class="m-box"><div class="m-lbl">Timeframe</div><div class="m-val default">${coin.timeframe}</div></div>
+          <div class="m-box"><div class="m-lbl">Rủi ro</div><div class="m-val ${riskCol(coin.risk)}">${coin.risk}</div></div>
+          <div class="m-box"><div class="m-lbl">Stop loss</div><div class="m-val red">${coin.stopLoss}</div></div>
+        </div>
+
+        <div class="score-section">
+          <div class="score-bars-col">
+            <div class="s-row"><span class="s-lbl">TA</span><div class="s-track"><div class="s-fill" style="width:${coin.taScore}%;background:#b57bff"></div></div><span class="s-num">${coin.taScore}</span></div>
+            <div class="s-row"><span class="s-lbl">Vol</span><div class="s-track"><div class="s-fill" style="width:${coin.volScore}%;background:#0fffb0"></div></div><span class="s-num">${coin.volScore}</span></div>
+            <div class="s-row"><span class="s-lbl">FA</span><div class="s-track"><div class="s-fill" style="width:${coin.faScore}%;background:#4da6ff"></div></div><span class="s-num">${coin.faScore}</span></div>
+            ${coin.isAlpha?`<div class="s-row"><span class="s-lbl">Alpha</span><div class="s-track"><div class="s-fill" style="width:${listScore}%;background:#f5a623"></div></div><span class="s-num">${listScore}</span></div>`:''}
+            <div class="s-row"><span class="s-lbl">News</span><div class="s-track"><div class="s-fill" style="width:${newsScore}%;background:#2dd4bf"></div></div><span class="s-num">${newsScore}</span></div>
+          </div>
+          <div class="signal-col">
+            <div class="signal-tag ${sigCls(coin.signal)}">${coin.signal}</div>
+            <div class="total-score">Tổng điểm<br><span>${coin.totalScore}</span>/100</div>
+          </div>
+        </div>
+
+        <div class="ai-reason">
+          <strong>Lý do:</strong> ${coin.keyReason}<br>
+          ${coin.isAlpha&&coin.alphaNote?`<span class="alpha-note">⬡ Alpha: ${coin.alphaNote}</span><br>`:''}
+          <strong>Vào lệnh:</strong> ${coin.entryZone}
+        </div>
+
+        <div class="news-sec" id="news-${coin.symbol}">
+          <div class="news-hdr-row">
+            <span class="news-hdr-lbl">Tin tức</span>
+          </div>
+          ${newsHtml}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (analysis.analysisNote) {
+    html += `<div class="mkt-note"><strong>Nhận định:</strong> ${analysis.analysisNote}</div>`;
+  }
+
+  wrap.innerHTML = html;
+
+  // Draw mini charts after render
+  analysis.top5.forEach(coin => {
+    const closes = closesMap && closesMap[coin.symbol] ? closesMap[coin.symbol] : [];
+    if (closes.length >= 2) {
+      const isUp = closes[closes.length-1] >= closes[0];
+      setTimeout(() => drawMiniChart(`chart-${coin.symbol}`, closes, isUp), 50);
+    }
+  });
+}
+
+function updateNewsLoading(symbol) {
+  const sec=document.getElementById('news-'+symbol);
+  if (!sec) return;
+  const ex=sec.querySelector('.news-loading,.news-item,.no-news,.news-impact,.news-impact-row');
+  const h=`<div class="news-loading" id="nl-${symbol}"><div class="nl-dot"></div>Đang tìm tin tức...</div>`;
+  if (ex) ex.outerHTML=h; else sec.innerHTML+=h;
+}
+function updateNewsDone(symbol, data) {
+  const l=document.getElementById('nl-'+symbol);
+  if (l) l.outerHTML=renderNewsHTML(data);
+}
+function renderNewsHTML(nd) {
+  if (!nd||!nd.news||!nd.news.length) return '<div class="no-news">Không tìm thấy tin tức gần đây</div>';
+  const sM={bullish:'TĂNG',bearish:'GIẢM',neutral:'NEUTRAL'};
+  const sC={bullish:'ns-bull',bearish:'ns-bear',neutral:'ns-neu'};
+  let h='';
+  if (nd.newsImpact) h+=`<div class="news-hdr-row"><span class="news-signal-pill ${sC[nd.overallNewsSignal]||'ns-neu'}">${sM[nd.overallNewsSignal]||'NEUTRAL'}</span><span class="news-impact">${nd.newsImpact}</span></div>`;
+  h+=nd.news.slice(0,3).map(n=>`
+    <div class="news-item">
+      <div class="n-title">${n.title||'—'}</div>
+      <div class="n-meta">
+        <span class="n-sent ${sC[n.sentiment]||'ns-neu'}">${sM[n.sentiment]||'NEUTRAL'}</span>
+        ${n.source?`<span class="n-src">${n.source}</span>`:''}
+        ${n.date?`<span class="n-date">${n.date}</span>`:''}
+        ${n.url?`<a class="n-link" href="${n.url}" target="_blank">Xem →</a>`:''}
+      </div>
+      ${n.summary?`<div class="n-sum">${n.summary}</div>`:''}
+    </div>`).join('');
+  return h;
+}
+
+// ── TAB SWITCHING ─────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.tab-nav-btn').forEach(b => {
+    if (b.getAttribute('onclick').includes(tab)) b.classList.add('active');
+  });
+}
+
+// ── PUMP & DUMP ENGINE ────────────────
+let pdScanning = false, pdScanCount = 0;
+let pdAutoTimer = null, pdCountdownTimer = null, pdCountdownSec = 0;
+let pdAlerts = [];
+
+const STABLES_PD = ['USDT','USDC','BUSD','DAI','TUSD','FDUSD','USDP','SUSD','GUSD'];
+
+function setPdStatus(state, txt) {
+  document.getElementById('pdDot').className = 'pd-dot ' + state;
+  document.getElementById('pdTxt').textContent = txt;
+}
+function setPdProgress(p) { document.getElementById('pdProgFill').style.width = p + '%'; }
+
+function toggleAutoScan() {
+  const checked = document.getElementById('pdAutoCheck').checked;
+  if (checked) {
+    const interval = parseInt(document.getElementById('pdInterval').value);
+    document.getElementById('nextScanWrap').style.display = 'flex';
+    startAutoCountdown(interval);
+    startPDScan();
+  } else {
+    clearInterval(pdAutoTimer);
+    clearInterval(pdCountdownTimer);
+    pdAutoTimer = null;
+    document.getElementById('nextScanWrap').style.display = 'none';
+    setPdStatus('', 'Tự động dừng');
+  }
+}
+
+function startAutoCountdown(interval) {
+  if (pdCountdownTimer) clearInterval(pdCountdownTimer);
+  pdCountdownSec = interval;
+  document.getElementById('nextScanCountdown').textContent = pdCountdownSec + 's';
+  pdCountdownTimer = setInterval(() => {
+    pdCountdownSec--;
+    document.getElementById('nextScanCountdown').textContent = pdCountdownSec + 's';
+    if (pdCountdownSec <= 0) {
+      clearInterval(pdCountdownTimer);
+      startPDScan().then(() => {
+        if (document.getElementById('pdAutoCheck').checked) {
+          startAutoCountdown(parseInt(document.getElementById('pdInterval').value));
+        }
+      });
+    }
+  }, 1000);
+}
+
+async function startPDScan() {
+  if (pdScanning) return;
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) {
+    alert('Vui lòng nhập Anthropic API key trong tab Scanner trước.');
+    return;
+  }
+
+  pdScanning = true;
+  const btn = document.getElementById('pdScanBtn');
+  btn.disabled = true; btn.classList.add('loading');
+  const volThresh = parseInt(document.getElementById('volThresh').value);
+
+  try {
+    // Step 1: Get all tickers
+    setPdStatus('scan', 'Bước 1/3 — Lấy dữ liệu Binance 24h...');
+    setPdProgress(10);
+
+    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+    if (!r.ok) throw new Error('Binance API lỗi');
+    const allTickers = await r.json();
+
+    // Filter USDT pairs, remove stables, min volume
+    const candidates = allTickers.filter(t => {
+      if (!t.symbol.endsWith('USDT')) return false;
+      const base = t.symbol.replace('USDT','');
+      if (STABLES_PD.includes(base)) return false;
+      if (parseFloat(t.quoteVolume) < 100000) return false;
+      return true;
+    });
+
+    document.getElementById('pd-scanned').textContent = candidates.length;
+    setPdStatus('scan', `Bước 2/3 — Phân tích ${candidates.length} token tìm dấu hiệu bất thường...`);
+    setPdProgress(35);
+
+    // Step 2: Compute anomaly signals for each token
+    const anomalies = [];
+    const now = Date.now();
+
+    // Get klines for top 60 by volume for better analysis
+    const top60 = candidates.sort((a,b) => parseFloat(b.quoteVolume)-parseFloat(a.quoteVolume)).slice(0,60);
+
+    const klinePromises = top60.slice(0,30).map(t =>
+      fetch(`https://api.binance.com/api/v3/klines?symbol=${t.symbol}&interval=1h&limit=48`)
+        .then(r2 => r2.ok ? r2.json() : [])
+        .then(k => ({ symbol: t.symbol, klines: k }))
+        .catch(() => ({ symbol: t.symbol, klines: [] }))
+    );
+    const klineResults = await Promise.all(klinePromises);
+    const kMap = {};
+    klineResults.forEach(k => { kMap[k.symbol] = k.klines; });
+
+    setPdProgress(60);
+
+    for (const t of top60) {
+      const klines = kMap[t.symbol] || [];
+      const price = parseFloat(t.lastPrice);
+      const change1h = parseFloat(t.priceChangePercent); // using 24h as proxy
+      const vol24h = parseFloat(t.quoteVolume);
+      const volBase = parseFloat(t.volume);
+      const high24h = parseFloat(t.highPrice);
+      const low24h = parseFloat(t.lowPrice);
+      const priceRange = (high24h - low24h) / low24h * 100;
+      const change24h = parseFloat(t.priceChangePercent);
+
+      let signals = { volumeSpike: 0, priceSpike: 0, priceDivergence: 0, recentDump: 0, suspiciousPattern: 0 };
+      let details = {};
+
+      // Volume spike analysis from klines
+      if (klines.length >= 12) {
+        const volumes = klines.map(k => parseFloat(k[5]));
+        const avgVol = volumes.slice(0,-3).reduce((a,b)=>a+b,0) / (volumes.length - 3);
+        const recentVol = volumes.slice(-3).reduce((a,b)=>a+b,0) / 3;
+        const volRatio = avgVol > 0 ? Math.round(recentVol / avgVol * 100) : 100;
+        details.volRatio = volRatio;
+        details.avgVol24h = Math.round(avgVol);
+
+        if (volRatio >= volThresh) signals.volumeSpike = volRatio >= volThresh * 2 ? 3 : 2;
+        else if (volRatio >= 200) signals.volumeSpike = 1;
+
+        // Price action from klines
+        const closes = klines.map(k => parseFloat(k[4]));
+        const recent3 = closes.slice(-3);
+        const prev3 = closes.slice(-9, -6);
+        if (recent3.length && prev3.length) {
+          const recentAvg = recent3.reduce((a,b)=>a+b,0)/3;
+          const prevAvg = prev3.reduce((a,b)=>a+b,0)/3;
+          const priceMomentum = ((recentAvg - prevAvg) / prevAvg * 100);
+          details.priceMomentum3h = priceMomentum.toFixed(1);
+
+          // Price-volume divergence: price up but volume already fading (dump incoming)
+          const midVol = volumes.slice(-6,-3).reduce((a,b)=>a+b,0)/3;
+          const latestVol = volumes.slice(-3).reduce((a,b)=>a+b,0)/3;
+          if (priceMomentum > 5 && latestVol < midVol * 0.5) {
+            signals.priceDivergence = 2; // Price still up but volume drying
+            details.divergence = 'Giá tăng nhưng volume đang giảm nhanh';
+          }
+
+          // Pump pattern: sharp rise then starting to fall
+          const peak = Math.max(...closes.slice(-12));
+          const peakIdx = closes.slice(-12).indexOf(peak);
+          if (peakIdx < 9 && closes[closes.length-1] < peak * 0.92) {
+            signals.recentDump = 2;
+            details.fromPeak = (-(peak - closes[closes.length-1]) / peak * 100).toFixed(1);
+          }
+        }
+      }
+
+      // Price range spike (volatility)
+      details.priceRange24h = priceRange.toFixed(1);
+      if (priceRange > 25) signals.priceSpike = 2;
+      else if (priceRange > 15) signals.priceSpike = 1;
+
+      // Suspicious: massive gain with high volume (classic pump setup)
+      details.change24h = change24h.toFixed(2);
+      if (change24h > 30 && signals.volumeSpike >= 2) signals.suspiciousPattern = 3;
+      else if (change24h > 20 && signals.volumeSpike >= 1) signals.suspiciousPattern = 2;
+      else if (change24h > 50) signals.suspiciousPattern = 2; // mega pump even without vol data
+
+      // Calc total risk score
+      const totalSignal = signals.volumeSpike + signals.priceSpike + signals.priceDivergence + signals.recentDump + signals.suspiciousPattern;
+      details.signals = signals;
+      details.price = price;
+      details.vol24hM = Math.round(vol24h / 1e6);
+
+      // Determine alert type and level
+      let alertType = 'suspicious';
+      let level = 'medium';
+
+      if (change24h > 20 && signals.volumeSpike >= 2) { alertType = 'pump'; level = totalSignal >= 7 ? 'critical' : 'high'; }
+      else if (signals.recentDump >= 2 && signals.priceDivergence >= 1) { alertType = 'dump'; level = 'high'; }
+      else if (signals.priceDivergence >= 2) { alertType = 'dump'; level = 'high'; }
+      else if (totalSignal >= 6) { alertType = 'pump'; level = 'critical'; }
+      else if (totalSignal >= 4) { alertType = signals.recentDump >= 1 ? 'dump' : 'pump'; level = 'high'; }
+
+      if (totalSignal >= 3) {
+        anomalies.push({
+          symbol: t.symbol,
+          base: t.symbol.replace('USDT',''),
+          alertType, level, totalSignal,
+          details, signals,
+          timestamp: new Date().toLocaleTimeString('vi-VN')
+        });
+      }
+    }
+
+    // Sort by signal strength
+    anomalies.sort((a,b) => b.totalSignal - a.totalSignal);
+    const top10 = anomalies.slice(0,10);
+
+    setPdStatus('scan', 'Bước 3/3 — Claude AI phân tích chi tiết từng cảnh báo...');
+    setPdProgress(75);
+
+    // Step 3: Claude AI analyze top anomalies
+    const aiAlerts = [];
+    for (const a of top10.slice(0,5)) {
+      try {
+        const prompt = `Bạn là chuyên gia phát hiện Pump & Dump crypto. Phân tích token này:
+
+Symbol: ${a.symbol}
+Loại nghi ngờ: ${a.alertType === 'pump' ? 'PUMP' : a.alertType === 'dump' ? 'DUMP' : 'SUSPICIOUS'}
+Biến động 24h: ${a.details.change24h}%
+Volume spike: ${a.details.volRatio || 'N/A'}% so với trung bình
+Biến động giá 24h: ${a.details.priceRange24h}%
+Momentum 3h: ${a.details.priceMomentum3h || 'N/A'}%
+Divergence: ${a.details.divergence || 'Không phát hiện'}
+Từ đỉnh: ${a.details.fromPeak ? a.details.fromPeak+'%' : 'N/A'}
+Tổng điểm tín hiệu: ${a.totalSignal}/10
+
+Đưa ra nhận định ngắn gọn bằng tiếng Việt. Trả về CHỈ JSON:
+{"verdict":"PUMP|DUMP|SUSPICIOUS|NORMAL","confidence":75,"warning":"Cảnh báo ngắn 1 câu","action":"Hành động khuyến nghị","explanation":"Giải thích 2-3 câu"}`;
+
+        const raw = await callClaude(apiKey, [{role:'user',content:prompt}], false);
+        let aiData;
+        try {
+          let pdStr = raw;
+          const pdMd = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (pdMd) pdStr = pdMd[1].trim();
+          else {
+            const ps = raw.indexOf('{');
+            if (ps !== -1) {
+              let pd2=0,pe=-1;
+              for(let i=ps;i<raw.length;i++){if(raw[i]==='{')pd2++;else if(raw[i]==='}'){pd2--;if(pd2===0){pe=i;break;}}}
+              if(pe!==-1) pdStr=raw.slice(ps,pe+1);
+            }
+          }
+          aiData = JSON.parse(pdStr);
+        } catch(eParse) {
+          aiData = null;
+        }
+        if (!aiData) aiData = {verdict: a.alertType.toUpperCase(), confidence: 60, warning: 'Phát hiện dấu hiệu bất thường', action: 'Theo dõi cẩn thận', explanation: 'Có dấu hiệu volume và giá bất thường cần chú ý.'};
+        aiAlerts.push({ ...a, ai: aiData });
+      } catch(e) {
+        aiAlerts.push({ ...a, ai: {verdict: a.alertType.toUpperCase(), confidence: 55, warning: 'Dấu hiệu bất thường', action: 'Cần theo dõi', explanation: 'Phân tích AI không khả dụng.'} });
+      }
+    }
+
+    // Add remaining (without AI)
+    top10.slice(5).forEach(a => aiAlerts.push({ ...a, ai: null }));
+
+    setPdProgress(95);
+
+    // Update UI
+    const critCount = aiAlerts.filter(a=>a.level==='critical').length;
+    const highCount = aiAlerts.filter(a=>a.level==='high').length;
+    document.getElementById('pd-critical').textContent = critCount;
+    document.getElementById('pd-high').textContent = highCount;
+    pdScanCount++;
+    document.getElementById('pd-scancount').textContent = pdScanCount;
+
+    // Add to alerts feed
+    aiAlerts.forEach(a => pdAlerts.unshift(a));
+    pdAlerts = pdAlerts.slice(0,30); // keep last 30
+    renderAlerts();
+
+    // Update badge
+    const totalAlerts = pdAlerts.length;
+    const badge = document.getElementById('pdAlertBadge');
+    badge.textContent = totalAlerts;
+    badge.style.display = totalAlerts > 0 ? 'inline' : 'none';
+
+    setPdStatus(critCount > 0 ? 'scan' : 'ok', `Xong · ${anomalies.length} dấu hiệu · ${critCount} CRITICAL · ${highCount} HIGH`);
+    setPdProgress(100);
+
+  } catch(err) {
+    setPdStatus('', 'Lỗi: ' + err.message);
+  }
+  btn.disabled = false; btn.classList.remove('loading');
+  pdScanning = false;
+}
+
+function clearAlerts() {
+  pdAlerts = [];
+  document.getElementById('pd-critical').textContent = '0';
+  document.getElementById('pd-high').textContent = '0';
+  document.getElementById('pdAlertBadge').style.display = 'none';
+  document.getElementById('alertCountBadge').textContent = '0';
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const list = document.getElementById('alertList');
+  document.getElementById('alertCountBadge').textContent = pdAlerts.length;
+
+  if (!pdAlerts.length) {
+    list.innerHTML = '<div class="pd-scanning-msg"><div class="pd-scanning-icon">⚠</div><div>Chưa có cảnh báo</div><div style="font-size:11px;margin-top:6px">Nhấn quét để bắt đầu giám sát</div></div>';
+    return;
+  }
+
+  const typeIcon = { pump: '▲', dump: '▼', suspicious: '?' };
+  const iconClass = { pump: 'icon-pump', dump: 'icon-dump', suspicious: 'icon-sus' };
+  const levelTagClass = { critical: 'tag-critical', high: 'tag-high', medium: 'tag-medium' };
+  const levelLabel = { critical: '⚠ CRITICAL', high: '▲ HIGH', medium: '◌ MEDIUM' };
+  const bandClass = { critical: 'critical', high: 'high', medium: 'medium' };
+
+  list.innerHTML = pdAlerts.map(a => {
+    const ai = a.ai;
+    const vSignal = a.details.volRatio ? a.details.volRatio + '%' : '—';
+    const riskScore = Math.min(100, Math.round(a.totalSignal / 10 * 100));
+    const riskColor = riskScore >= 70 ? '#ff4d4d' : riskScore >= 45 ? '#f5a623' : '#4da6ff';
+
+    const verdict = ai ? ai.verdict : a.alertType.toUpperCase();
+    const verdictColor = verdict==='PUMP' ? 'neon' : verdict==='DUMP' ? 'red' : 'amber';
+
+    return `<div class="alert-card level-${a.level}">
+      <div class="alert-band ${bandClass[a.level]}"></div>
+      <div class="alert-inner">
+        <div class="alert-top">
+          <div class="alert-sym-wrap">
+            <div class="alert-type-icon ${iconClass[a.alertType]}">${typeIcon[a.alertType]}</div>
+            <div>
+              <div class="alert-sym">${a.base}</div>
+              <div class="alert-pair">${a.symbol} · ${a.timestamp}</div>
+            </div>
+          </div>
+          <div class="alert-right">
+            <div class="alert-level-tag ${levelTagClass[a.level]}">${levelLabel[a.level]}</div>
+            <div class="alert-time" style="color:${riskColor}">Risk: ${riskScore}%</div>
+          </div>
+        </div>
+
+        <div class="signal-grid">
+          <div class="sig-box ${a.signals.volumeSpike >= 2 ? 'triggered' : a.signals.volumeSpike >= 1 ? 'warn' : ''}">
+            <div class="sig-box-lbl">Volume Spike</div>
+            <div class="sig-box-val ${a.signals.volumeSpike >= 2 ? 'red' : a.signals.volumeSpike >= 1 ? 'amber' : 'default'}">${vSignal}</div>
+          </div>
+          <div class="sig-box ${parseFloat(a.details.change24h) > 20 ? 'triggered' : parseFloat(a.details.change24h) > 10 ? 'warn' : ''}">
+            <div class="sig-box-lbl">Biến động 24h</div>
+            <div class="sig-box-val ${parseFloat(a.details.change24h) > 20 ? 'red' : parseFloat(a.details.change24h) > 0 ? 'neon' : 'red'}">${a.details.change24h}%</div>
+          </div>
+          <div class="sig-box ${a.signals.priceDivergence >= 2 ? 'triggered' : a.signals.priceDivergence >= 1 ? 'warn' : ''}">
+            <div class="sig-box-lbl">Divergence</div>
+            <div class="sig-box-val ${a.signals.priceDivergence >= 1 ? 'amber' : 'default'}">${a.signals.priceDivergence >= 1 ? 'DETECTED' : 'NORMAL'}</div>
+          </div>
+          <div class="sig-box ${a.signals.priceSpike >= 2 ? 'triggered' : ''}">
+            <div class="sig-box-lbl">Range 24h</div>
+            <div class="sig-box-val ${parseFloat(a.details.priceRange24h) > 25 ? 'red' : 'default'}">${a.details.priceRange24h}%</div>
+          </div>
+          <div class="sig-box ${a.signals.recentDump >= 2 ? 'triggered' : ''}">
+            <div class="sig-box-lbl">Từ đỉnh</div>
+            <div class="sig-box-val ${a.details.fromPeak ? 'red' : 'default'}">${a.details.fromPeak ? a.details.fromPeak+'%' : '—'}</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-box-lbl">Vol (triệu USD)</div>
+            <div class="sig-box-val default">$${a.details.vol24hM}M</div>
+          </div>
+        </div>
+
+        <div class="risk-meter-wrap">
+          <div class="risk-meter-lbl"><span>Mức độ rủi ro</span><span style="color:${riskColor}">${riskScore}%</span></div>
+          <div class="risk-track"><div class="risk-fill" style="width:${riskScore}%;background:${riskColor}"></div></div>
+        </div>
+
+        ${ai ? `<div class="ai-verdict">
+          <strong>AI Verdict: <span class="verdict-${verdictColor === 'red' ? 'action' : verdictColor === 'neon' ? 'safe' : 'action'}">${ai.verdict}</span></strong> · Độ tin cậy: ${ai.confidence}%<br>
+          <strong>⚠ ${ai.warning}</strong><br>
+          ${ai.explanation}<br>
+          <span style="color:var(--amber)">→ ${ai.action}</span>
+        </div>` : `<div class="ai-verdict"><strong>Dấu hiệu:</strong> ${a.details.divergence || 'Volume và giá bất thường'}</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
